@@ -120,7 +120,7 @@ function main() {
   for (const d of done) console.log('  ' + d);
   console.log('');
   console.log('设计说明里直接用 Markdown 图片语法引用这些 PNG。');
-  console.log('需要进 Figma 画布时走 capture 通道（同样不计额度），见 references/figma.md。');
+  console.log('需要进 Figma 画布时走 capture 通道（同样不计额度），见 references/2-design/figma.md。');
 }
 
 main();

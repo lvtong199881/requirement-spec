@@ -27,7 +27,7 @@
 | 7 验收 | 起验收 agent 独立复核，再逐条对照验收标准 | 验收文档 |
 | 8 复盘 | 按需 | 复盘记录 |
 
-每阶段的详细准出清单见 [`references/templates.md`](references/templates.md)。
+每个阶段一个目录，做法写在 `README.md`，该阶段的文档模板与准出清单写在同目录的 `templates.md`。
 
 ## 安装
 
@@ -52,13 +52,13 @@ git clone https://github.com/lvtong199881/requirement-spec.git ~/.dsh/skills/req
 ```
 SKILL.md                  # 入口：规则、流程表、落盘约定
 references/
-  requirements.md         # 阶段 1：澄清判据、REQ 编号、歧义扫描
-  design.md               # 阶段 2：出稿流程、状态覆盖、归档
-  figma.md                # 阶段 2：MCP 通道、授权、限流、spec 结构
-  review.md               # 阶段 5：评审 agent 角色卡与协议
-  commits.md              # 阶段 4：提交信息规范的判断依据
-  verify.md               # 阶段 6-7：测试要求、验收 agent、追溯矩阵
-  templates.md            # 全阶段模板与准出清单
+  1-requirements/         # 阶段 1：README 澄清判据/REQ 编号/歧义扫描，templates 模板与准出
+  2-design/               # 阶段 2：README 出稿流程/状态覆盖/归档，figma.md 通道与 spec，templates
+  3-tech-plan/            # 阶段 3：README 拆分粒度/接口定稿/影响面，templates
+  4-development/          # 阶段 4：README 提交信息规范，templates
+  5-review/               # 阶段 5：README 评审 agent 角色卡与协议，templates
+  6-testing/              # 阶段 6：README 测试要求/证据/截图归档，templates
+  7-acceptance/           # 阶段 7：README 验收 agent/设计稿核对/追溯矩阵，templates
 assets/
   figma-*.js              # 授权预检、渲染、截图、捕获、编译
   figma-plugin/           # 本地 Figma 插件骨架（手动导入兜底）
@@ -71,7 +71,7 @@ skill 本身不含任何凭据。Figma token 由 `mcp-remote` 存在 `~/.mcp-aut
 ## 贡献
 
 提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.0.0/)，
-格式 `<type>(<scope>): <description>`，详见 [references/commits.md](references/commits.md)。
+格式 `<type>(<scope>): <description>`，详见 [references/4-development/README.md](references/4-development/README.md)。
 
 ## License
 

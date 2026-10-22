@@ -113,7 +113,7 @@ function inspect() {
 function authorize(timeoutSec) {
   const proxy = process.env.FIGMA_MCP_PROXY || findProxy();
   if (!proxy) {
-    fail('找不到 mcp-remote。请先按 references/figma.md 第一节把桥接装到 ~/.dsh/mcp/figma/');
+    fail('找不到 mcp-remote。请先按 references/2-design/figma.md 第一节把桥接装到 ~/.dsh/mcp/figma/');
   }
 
   const before = readJson(TOKENS_PATH);

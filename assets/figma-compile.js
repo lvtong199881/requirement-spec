@@ -10,7 +10,7 @@
  * use_figma 只认 Plugin API 代码。每次让模型手写代码会有随机偏差，
  * 编译一遍能保证「同一份 spec 永远产出同一棵树」。
  *
- * 产物必须满足 figma-use 的硬约束（踩过的坑，见 references/figma.md 第四节）：
+ * 产物必须满足 figma-use 的硬约束（踩过的坑，见 references/2-design/figma.md 第四节）：
  *   - 用 return 输出，不 closePlugin、不包 async IIFE
  *   - 颜色 0–1，paint 只有 {r,g,b}，opacity 放 paint 层
  *   - fills 是只读数组，整体重新赋值而不是 push
