@@ -1,4 +1,4 @@
-// Conventional Commits 1.0.0 —— 与 CONTRIBUTING.md 保持一致
+// Conventional Commits 1.0.0 —— 与 references/commits.md 保持一致
 // 用法：npm i -D @commitlint/cli @commitlint/config-conventional
 //       echo "msg" | npx commitlint
 export default {

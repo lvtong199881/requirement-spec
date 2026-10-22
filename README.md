@@ -71,7 +71,7 @@ skill 本身不含任何凭据。Figma token 由 `mcp-remote` 存在 `~/.mcp-aut
 ## 贡献
 
 提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.0.0/)，
-格式 `<type>(<scope>): <description>`，详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+格式 `<type>(<scope>): <description>`，详见 [references/commits.md](references/commits.md)。
 
 ## License
 

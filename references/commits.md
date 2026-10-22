@@ -2,7 +2,7 @@
 
 提交信息是交付物的一部分：它会被 `git log`、`git blame`、release note 长期读取。格式错了事后只能重写历史，所以在 commit 之前就要定下来。
 
-本文件只写**判断依据**，不复述规范全文。规范的完整版在仓库根目录的 [CONTRIBUTING.md](../CONTRIBUTING.md)。
+本文件是本仓库提交规范的唯一出处：先判断该用哪套规范，没有项目自有规范时用下面的兜底格式。
 
 ## 先判断用哪套规范
 
@@ -21,6 +21,43 @@
 写法：`description` 祈使语气、小写开头、不加句号（中文同样适用——写「删除重复说明」而不是「删除了重复说明」）；`scope` 写受影响的模块或目录；一次提交只做一件事；正文写**为什么改**和**影响什么**，不复述 diff；破坏性变更在 type 后加 `!` 并在 footer 写 `BREAKING CHANGE:`。
 
 判断把握不大时按第 1 步的实际风格写，不要自己发明新格式。
+
+### type 怎么选
+
+| type | 用途 |
+| --- | --- |
+| `feat` | 新增能力（规则、脚本、模板、参考文档） |
+| `fix` | 修正错误（脚本行为、文档事实错误） |
+| `docs` | 只改文档，不影响行为 |
+| `refactor` | 重构，不改变外部行为 |
+| `perf` | 性能优化 |
+| `test` | 测试相关 |
+| `build` | 构建或依赖变更 |
+| `ci` | CI 配置 |
+| `chore` | 杂项（不影响源码与测试） |
+| `revert` | 回滚既有提交 |
+
+### 示例
+
+```
+feat(figma): 支持多状态一次提交出稿
+docs(readme): 删除流程表后重复的设计阶段说明
+fix(capture): captureId 重复消费时给出明确报错
+
+BREAKING CHANGE: 不再等阶段 2 才做授权，
+调用方需要在进入阶段 1 前先跑 figma-auth.js check。
+```
+
+### 校验
+
+仓库根的 `commitlint.config.mjs` 用 `extends: @commitlint/config-conventional` 固化以上规则（`type-enum`、`header-max-length: 100`，中文无大小写故关掉 `subject-case`）。它只是规则声明，不是运行依赖——`clone` 下来不装也能跑 skill，装它纯粹为了 commit 前先自验一遍：
+
+```bash
+npm i -D @commitlint/cli@19 @commitlint/config-conventional@19   # 一次性
+echo "feat(figma): 支持多状态一次提交出稿" | npx commitlint --config commitlint.config.mjs
+```
+
+退出码 0 即通过。
 
 ## 和「不可逆动作先问」配合
 
