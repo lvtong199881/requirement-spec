@@ -67,6 +67,11 @@ assets/
 
 skill 本身不含任何凭据。Figma token 由 `mcp-remote` 存在 `~/.mcp-auth/`，不会进仓库；仓库里也没有硬编码的个人路径或账号信息。
 
+## 贡献
+
+提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.0.0/)，
+格式 `<type>(<scope>): <description>`，详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
 ## License
 
 MIT
