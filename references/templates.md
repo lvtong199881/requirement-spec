@@ -361,6 +361,7 @@
 - 编译通过
 - 无遗留 TODO，或遗留项已显式记录
 - 代码符合项目 AGENTS.md 规范（命名、注释语言、禁用写法、多语言资源）
+- 提交信息符合项目自有规范（`CONTRIBUTING.md` / `.gitmessage` / commitlint）或 Conventional Commits，且提交前已把拟用信息原文给用户确认
 
 **代码评审 → 测试**
 - 评审由评审 agent（相当于同事工程师）执行，范围覆盖本次改动的调用方、接口、数据和可测性

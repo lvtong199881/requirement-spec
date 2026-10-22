@@ -56,6 +56,7 @@ references/
   design.md               # 阶段 2：出稿流程、状态覆盖、归档
   figma.md                # 阶段 2：MCP 通道、授权、限流、spec 结构
   review.md               # 阶段 5：评审 agent 角色卡与协议
+  commits.md              # 阶段 4：提交信息规范的判断依据
   verify.md               # 阶段 6-7：测试要求、验收 agent、追溯矩阵
   templates.md            # 全阶段模板与准出清单
 assets/

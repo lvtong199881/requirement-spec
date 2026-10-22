@@ -37,6 +37,16 @@
 - 正文与 footer 之间空一行；正文可写动机与影响，不要复述 diff。
 - 不许出现 `update`、`修改一下`、`fix bug` 这类无信息量的描述。
 
+### 校验
+
+仓库自带 `commitlint.config.mjs`。装了 commitlint 时可直接校验一条信息：
+
+```bash
+echo "feat(figma): 支持多状态一次提交出稿" | npx commitlint --config commitlint.config.mjs
+```
+
+没装也不影响贡献——这个文件只是规则声明，不是运行依赖。
+
 ### 示例
 
 ```
