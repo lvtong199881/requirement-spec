@@ -1,8 +1,8 @@
 # requirement-spec
 
-一条需求进去，PRD、设计稿、技术方案、代码、评审报告、测试报告、验收文档一起出来。
+基于 skill 的需求规范驱动开发，包含产品需求、设计、技术方案、开发、代码评审、测试、验收、复盘等 8 个阶段。
 
-这是一个给 AI coding agent 用的 **skill**（技能包）：它把「产品需求 → 设计 → 技术方案 → 开发 → 代码评审 → 测试 → 验收 → 复盘」整条链路固化成可执行的流程，而不是让 agent 每次凭感觉发挥。设计阶段会直接产出 **Figma 设计稿**，且默认不消耗 Figma MCP 额度。
+这是一个给 AI coding agent 用的 **skill**（技能包）：它把整条需求链路固化成可执行的流程，而不是让 agent 每次凭感觉发挥。
 
 ## 它解决什么问题
 
@@ -29,40 +29,7 @@
 
 每阶段的详细准出清单见 [`references/templates.md`](references/templates.md)。
 
-## 设计阶段怎么出 Figma 稿（零额度）
-
-这是本 skill 最有意思的部分。Figma 官方 MCP 的写画布工具在 Starter 计划下只有 **20 次/月**，一个需求多状态出稿就用光了。所以设计阶段拆成三段，**前两段全在本地跑，一次 MCP 调用都不消耗**：
-
-```
-design-spec.json  ──figma-render.js──▶  html/  ──figma-shot.js──▶  PNG
-                                                   │
-                        generate_figma_design ◀────┘   （此工具不计额度）
-                                 │
-                        figma-capture.js（无头 Chromium 捕获提交）
-                                 │
-                                 ▼
-                          Figma 画布上的真实 frame
-```
-
-要点：
-
-- `design-spec.json` 是唯一设计源，HTML 和 PNG 都是从它派生的**产物**，不手写。
-- 写画布默认走 `generate_figma_design`——它按官方说明**不消耗** MCP 调用额度，能把一份自包含 HTML 捕获成 Figma 里真的可编辑图层。
-- 只有确实需要原生组件实例、且额度充足时，才用 `use_figma`（计额度，但能精确控制图层结构）。
-- 验证也全在本地：用本地渲染的 PNG 自检，不用 `get_screenshot` / `get_metadata`（这两个都计额度）。
-
-完整说明见 [`references/figma.md`](references/figma.md)。
-
-## Figma 接不通怎么办
-
-skill 在**任务最开头**就跑一次授权检查，而不是等到设计阶段——授权是整个流程里唯一需要人动手的环节，提前打通才能保证后面全自动。
-
-```bash
-node assets/figma-auth.js check       # 退出码 0=可用，2=需授权
-node assets/figma-auth.js authorize   # 只在需要时跑：会打开浏览器
-```
-
-拿不到 Figma 时**降级不阻断**：照常产出 `figma-import/` 源文件与 PNG，交付说明里写明未推送原因，人工用本地 Figma 插件导入即可。
+设计阶段默认**零额度**出稿：`design-spec.json` 是唯一设计源，HTML 与 PNG 全在本地派生，写画布走不计额度的 `generate_figma_design`；接不通 Figma 时降级为本地源文件 + 导入包，不阻断流程。细节见 [`references/figma.md`](references/figma.md)。
 
 ## 安装
 
@@ -77,9 +44,8 @@ git clone https://github.com/lvtong199881/requirement-spec.git ~/.dsh/skills/req
 ## 依赖
 
 - **Node.js** ≥ 18（脚本用到 `node:fs/promises`、`fetch`）
-- **Chrome / Chromium / Edge**（`figma-shot.js` 与 `figma-capture.js` 用无头模式渲染；可用 `CHROME_PATH` 指定）
+- **Chrome / Chromium / Edge**（无头渲染用；可用 `CHROME_PATH` 指定）
 - **Figma 账号**（免费 Starter 即可）
-- 可选：`mcp-remote` 用于 OAuth 桥接，见 [`references/figma.md`](references/figma.md)
 
 脚本无第三方 npm 依赖，clone 下来直接能跑。
 
@@ -90,16 +56,12 @@ SKILL.md                  # 入口：规则、流程表、落盘约定
 references/
   requirements.md         # 阶段 1：澄清判据、REQ 编号、歧义扫描
   design.md               # 阶段 2：出稿流程、状态覆盖、归档
-  figma.md                # 阶段 2：MCP 通道、OAuth、限流、spec 结构
+  figma.md                # 阶段 2：MCP 通道、授权、限流、spec 结构
   review.md               # 阶段 5：评审 agent 角色卡与协议
   verify.md               # 阶段 6-7：测试要求、验收 agent、追溯矩阵
   templates.md            # 全阶段模板与准出清单
 assets/
-  figma-auth.js           # OAuth token 预检与授权
-  figma-render.js         # design-spec.json → HTML
-  figma-shot.js           # HTML → PNG（无头 Chromium）
-  figma-capture.js        # HTML → Figma 画布（零额度通道）
-  figma-compile.js        # design-spec.json → use_figma 代码（备用通道）
+  figma-*.js              # 授权预检、渲染、截图、捕获、编译
   figma-plugin/           # 本地 Figma 插件骨架（手动导入兜底）
 ```
 
