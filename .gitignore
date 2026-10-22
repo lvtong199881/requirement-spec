@@ -1,0 +1,15 @@
+# 依赖与运行产物
+node_modules/
+*.log
+.DS_Store
+
+# Figma OAuth 凭据（由 mcp-remote 存放在 ~/.mcp-auth，永远不会出现在这里；
+# 万一误拷进目录也不许提交）
+*_tokens.json
+_client_info.json
+.mcp-auth/
+
+# 出稿中间产物（可随时从 design-spec.json 重新派生）
+tmp/
+.out/
+*.tmp
