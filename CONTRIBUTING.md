@@ -39,13 +39,14 @@
 
 ### 校验
 
-仓库自带 `commitlint.config.mjs`。装了 commitlint 时可直接校验一条信息：
+仓库自带 `commitlint.config.mjs`（`extends` 的是 `@commitlint/config-conventional`）。想本地校验一条提交信息时，先临时装依赖再跑：
 
 ```bash
+npm i -D @commitlint/cli@19 @commitlint/config-conventional@19   # 一次性
 echo "feat(figma): 支持多状态一次提交出稿" | npx commitlint --config commitlint.config.mjs
 ```
 
-没装也不影响贡献——这个文件只是规则声明，不是运行依赖。
+退出码 0 表示通过。**不需要为了贡献而装**——这个文件只是规则声明，不进运行依赖，`clone` 下来就能直接跑 skill；装它纯粹是让 `git commit` 之前能自己先验一遍。
 
 ### 示例
 
