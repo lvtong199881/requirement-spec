@@ -50,14 +50,7 @@ BREAKING CHANGE: 不再等阶段 2 才做授权，
 
 ### 校验
 
-仓库根的 `commitlint.config.mjs` 用 `extends: @commitlint/config-conventional` 固化以上规则（`type-enum`、`header-max-length: 100`，中文无大小写故关掉 `subject-case`）。它只是规则声明，不是运行依赖——`clone` 下来不装也能跑 skill，装它纯粹为了 commit 前先自验一遍：
-
-```bash
-npm i -D @commitlint/cli@19 @commitlint/config-conventional@19   # 一次性
-echo "feat(figma): 支持多状态一次提交出稿" | npx commitlint --config commitlint.config.mjs
-```
-
-退出码 0 即通过。
+不需要工具链：照上面的格式逐项自检即可——`type` 在允许列表内、有可选的 `(scope)`、冒号后有一个空格、描述行不超过 100 字符、不以句号结尾，破坏性变更要写 `!` 或 `BREAKING CHANGE:`。目标项目自己配了 commitlint 或其他校验时，按它的命令跑。
 
 ## 和「不可逆动作先问」配合
 
