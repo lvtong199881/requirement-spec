@@ -29,8 +29,6 @@
 
 每阶段的详细准出清单见 [`references/templates.md`](references/templates.md)。
 
-设计阶段默认**零额度**出稿：`design-spec.json` 是唯一设计源，HTML 与 PNG 全在本地派生，写画布走不计额度的 `generate_figma_design`；接不通 Figma 时降级为本地源文件 + 导入包，不阻断流程。细节见 [`references/figma.md`](references/figma.md)。
-
 ## 安装
 
 把整个目录放进你的 skills 目录：
