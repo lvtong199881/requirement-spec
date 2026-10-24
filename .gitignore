@@ -13,3 +13,6 @@ _client_info.json
 tmp/
 .out/
 *.tmp
+
+# 遥测数据（按 git 仓库维度落在 docs/requirements/.telemetry/，不随 skill 提交）
+docs/requirements/.telemetry/

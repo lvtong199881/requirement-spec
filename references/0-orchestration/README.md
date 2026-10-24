@@ -231,6 +231,44 @@ subagent(
 
 用户要求，或需要用 PRD 的监测指标回看实际效果时才做。起复盘 agent，输入是 PRD 的监测指标、测试报告的日志校验结果、验收文档；输出 `复盘记录.md`，只写结论和建议，不改任何已有产物。
 
+## 遥测（主流程的阶段边界动作）
+
+阶段耗时、返工、评审判定、缺陷来源这些执行数据散在各需求的 `编排记录.md` 里，跨需求跨人无法聚合。所以主流程在阶段边界多打一行脚本，让数据能回答「团队用这个 skill 的效率如何、该改哪一段」。
+
+**三条铁律**：
+
+1. **只读侧信道**：数据只从流程流出，绝不回灌。遥测结果不写进任务包、不出现在给子 agent 的任何材料里——子 agent 知道自己在被度量，独立性就失效了。
+2. **失败不影响主流程**：写入类命令永远退出码 0。存储不可写、脚本不存在，都只告警到 stderr，主流程继续跑，不因此停下问用户。
+3. **不替代编排记录**：`编排记录.md` 是给人看的审计留痕，照旧写；遥测是给机器算的，两者都要有。
+
+**执行时机**（脚本自己算耗时，主流程不做时间运算）：
+
+| 时机 | 命令 |
+| --- | --- |
+| 受理需求、Figma check 之后 | `node assets/telemetry.js init --req <需求标识> --mode <主动/自动> --tier <档位>` → 打印 run_id，记下来 |
+| 发出 `subagent` 之前 | `node assets/telemetry.js stage-start --run <run_id> --stage <1/2/3/4/5a/5c/5d/6/7/8> --role <角色名>` |
+| 收到回执并校验之后 | `node assets/telemetry.js stage-end --run <run_id> --stage <同上> --status <完成/部分完成/阻塞> --rework <次数>` |
+| 发回缺口清单时 | `node assets/telemetry.js rework --run <run_id> --stage <N> --round <轮次> --gaps "缺口1,缺口2"` |
+| 逐条判定评审意见后 | `node assets/telemetry.js issue --run <run_id> --id CR-1 --level <阻断/应修/建议> --verdict <已修复/不修/误报/待决策>` |
+| 复审结论出来时 | `node assets/telemetry.js recheck --run <run_id> --round <轮次> --result <通过/仍有阻断>` |
+| 测试/验收报缺陷时 | `node assets/telemetry.js defect --run <run_id> --source <6/7> --severity <严重/一般/轻微> --introduced <yes/no> [--out_of_scope yes]` |
+| 任何停点 | `node assets/telemetry.js stop --run <run_id> --type <澄清/关键分叉/不可逆动作/硬阻塞/返工超限> [--wait <等待毫秒>]` |
+| 发现独立性被破坏 | `node assets/telemetry.js violation --run <run_id> --type <主流程代写产物/复审新起实例/给了源码/PRD 节选> --stage <N>` |
+| 流程跑不下去了 | `node assets/telemetry.js abort --run <run_id> --reason <额度耗尽/子agent失败/用户放弃/环境错误/其它>` |
+| 交付或中止时 | `node assets/telemetry.js close --run <run_id> --result <验收通过/带待决策/中止> --agents <起用数>` |
+
+脚本路径写成 skill 目录下的 `assets/telemetry.js`，不要假设工作目录。
+
+**中断必须打点。** 额度耗尽（429）、子 agent 失败、用户放弃、环境错误导致流程跑不完时，记一条 `abort`。这条不能省：没有它，中断的需求既不出 `stage.end` 也不出 `run.end`，会在报告里**彻底隐形**——既不算成功也不算失败，等于从未发生，而 429 恰恰是最该被看见的失败模式。中断阶段脚本能从「起了但没收尾」的 `stage.start` 自己推断，所以 `--stage` 可以不传。
+
+来不及打 `abort` 也没关系：`report` 会把「超过 30 分钟没有任何事件、又没有结束信号」的需求标为**静默中断**并单独告警。这类通常是 429 额度耗尽或进程被杀——主流程连记录的机会都没有，所以报告必须自己认出来。
+
+**漏报了不用补打点**：`编排记录.md` 是主流程必写的，跑 `node assets/telemetry.js parse --path docs/requirements` 就能从里面的「阶段进度」「评审判定」「停点记录」三张表回填出事件（同一需求重复执行幂等，靠文件路径+修改时间去重）。回填数据的耗时和缺陷字段是空的，`report` 会显式给出 L1 覆盖率——覆盖率低就是提醒该把打点补回来，不是数据错了。
+
+**数据落在哪**：`<仓库根>/docs/requirements/.telemetry/events.jsonl`，按 git 仓库维度存，和产物同源、能和需求目录与 commit sha 对齐。不在 git 仓库里时降级到 `~/.dsh/telemetry/requirement-spec/<目录名>/`。想让它退出版本控制，`.gitignore` 加一行 `docs/requirements/.telemetry/`。
+
+**看数据**：`node assets/telemetry.js report`（加 `--json` 出机器可读；`--path` 指定仓库；跨仓库先在 `~/.dsh/telemetry/requirement-spec/config.json` 的 `scanPaths` 里配上根目录再用 `--all`）。
+
 ## 不适用本协议的情况
 
 阶段 8 之外的单个文档修订（例如只改提交信息规范）不属于流程阶段，直接做，不用起 agent。判断标准：它是否改变某个阶段的产物、是否影响下一环的准出。

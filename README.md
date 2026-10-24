@@ -73,7 +73,7 @@ git clone https://github.com/lvtong199881/requirement-spec.git ~/.dsh/skills/req
 ```
 SKILL.md                  # 入口：规则、编排模型、流程表、落盘约定
 references/
-  0-orchestration/        # 编排协议：任务包/回执/校验返工/失败处理；templates 有施工单
+  0-orchestration/        # 编排协议：任务包/回执/校验返工/失败处理/遥测；templates 有施工单
   1-requirements/         # 阶段 1：需求 agent 角色卡、澄清判据/REQ 编号/歧义扫描，templates
   2-design/               # 阶段 2：设计 agent 角色卡、出稿流程/状态覆盖/归档，figma.md 通道与 spec，templates
   3-tech-plan/            # 阶段 3：方案 agent 角色卡、拆分粒度/接口定稿/影响面，templates
@@ -85,6 +85,21 @@ assets/
   figma-*.js              # 授权预检、渲染、截图、捕获、编译
   figma-plugin/           # 本地 Figma 插件骨架（手动导入兜底）
 ```
+
+## 使用效率统计
+
+主流程在阶段边界打点，数据按 git 仓库维度落到 `<仓库根>/docs/requirements/.telemetry/events.jsonl`，
+用来分析团队用这个 skill 的效率（阶段耗时、返工热点、评审误报率、缺陷逃逸率、停点分布），据此定位该改哪份角色卡或准出清单。
+
+```bash
+node assets/telemetry.js report                          # 出效率报告
+node assets/telemetry.js report --json                   # 机器可读
+node assets/telemetry.js parse --path docs/requirements  # 漏打点时从编排记录回填
+```
+
+协议（打点时机与三条铁律）见 [references/0-orchestration/README.md](references/0-orchestration/README.md) 的「遥测」一节。
+数据只用于改进 skill 本身，**不建议用作个人绩效**——一旦变成考核，打点就会失真。
+不想让数据进版本控制，`.gitignore` 加一行 `docs/requirements/.telemetry/`。
 
 ## 免责
 
