@@ -1,6 +1,6 @@
 ---
 name: requirement-spec
-description: Execute a full product requirement lifecycle from a single stated requirement, including product requirements, design, technical planning, implementation, testing, code review, correction, regression testing, and acceptance. Use when the user explicitly invokes $requirement-spec, or when a product-level request benefits from end-to-end lifecycle management.
+description: 从单个产品需求端到端执行产品需求、设计、技术方案、开发、测试、代码评审、修正、回归与验收的完整生命周期。Execute a full product requirement lifecycle (PRD → design → tech plan → implementation → tests → code review → fix → regression → acceptance). 用户显式调用 $requirement-spec，或产品级需求适合端到端生命周期管理时使用。
 metadata:
   short-description: 从产品需求自动跑到测试、代码评审、修正与验收交付
 ---
