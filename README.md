@@ -89,8 +89,9 @@ assets/
 
 ## 使用效率统计
 
-主流程在阶段边界打点，数据默认落到 `~/.dsh/telemetry/requirement-spec/<仓库目录名>/events.jsonl`
-（**不写进用户仓库**——需求标识和作者名是明文，写进项目目录会随 `git add -A` 一起提交出去）。
+主流程在阶段边界打点，数据默认写到 `<仓库根>/docs/requirements/.telemetry/events.jsonl`——**git 仓库优先**，和需求产物同源，
+能对着需求目录与 commit sha 做前后对比。脚本会自动把这行加进仓库的 `.gitignore`，所以数据只留在本地，
+不会随 `git add -A` 被提交出去（需求标识与作者名是明文）。想让数据跟着 clone / push 流动，才把配置里的 `commit` 打开。
 用来分析团队用这个 skill 的效率（阶段耗时、返工热点、评审误报率、缺陷逃逸率、停点分布、中断率），据此定位该改哪份角色卡或准出清单。
 
 调用时用 skill 的绝对路径（脚本按主流程的 cwd 判断数据该归到哪个仓库，用相对路径会找不到脚本）：
@@ -107,7 +108,7 @@ node "$SKILL_DIR/assets/telemetry.js" parse --path docs/requirements  # 漏打�
 
 协议（打点时机与四条铁律）见 [references/0-orchestration/README.md](references/0-orchestration/README.md) 的「遥测」一节。
 数据只用于改进 skill 本身，**不建议用作个人绩效**——一旦变成考核，打点就会失真。
-留存与清理见 0-orchestration 的「隐私与治理」；需要脱敏时把配置里的 `anonymizeAuthor` / `maskReqId` 打开。
+存储与治理（三种模式、脱敏开关）见 0-orchestration 的「隐私与治理」。
 
 ## 免责
 

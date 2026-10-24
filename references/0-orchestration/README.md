@@ -282,7 +282,7 @@ subagent(
 1. **只读侧信道**：数据只从流程流出，绝不回灌。遥测结果不写进任务包、不出现在给子 agent 的任何材料里——子 agent 知道自己在被度量，独立性就失效了。**因此回执里不要加「自报用量」这类字段**——它会随着任务包一起发给子 agent，等于告诉它「你在被统计」，而脚本根本不消费这个字段。
 2. **失败不影响主流程**：写入类命令永远退出码 0。存储不可写、脚本不存在，都只告警到 stderr，主流程继续跑，不因此停下问用户。
 3. **不替代编排记录**：`编排记录.md` 是给人看的审计留痕，照旧写；遥测是给机器算的，两者都要有。
-4. **默认不写进用户仓库**：数据落在 `~/.dsh/telemetry/requirement-spec/<仓库目录名>/`。写进项目里属于修改用户仓库，只有用户明确要求时才做，且要先按不可逆动作停点请求确认。
+4. **默认不进版本控制**：数据默认写进 `<仓库根>/docs/requirements/.telemetry/events.jsonl`（git 仓库优先——与需求产物同源，能对齐需求目录与 commit sha），脚本会**自动把这一行加进仓库的 `.gitignore`**，所以数据只在本地，不会随 `git add -A` 被提交出去。想让数据跟着 clone / push 流动（团队共享）才把配置里的 `commit` 设为 `true`，并建议同时打开 `anonymizeAuthor`。
 
 **执行时机**（脚本自己算耗时，主流程不做时间运算）：
 
@@ -316,14 +316,18 @@ node "$SKILL_DIR/assets/telemetry.js" init --req <需求标识> --mode <主动/�
 
 **漏报了不用补打点**：`编排记录.md` 是主流程必写的，跑 `node "$SKILL_DIR/assets/telemetry.js" parse --path docs/requirements` 就能从里面的「阶段进度」「评审判定」「停点记录」三张表回填出事件（幂等键是「仓库 + 需求标识」，同需求重复执行不会重复计数；`--force` 会先清掉旧事件再重解析）。回填数据的耗时和缺陷字段是空的，`report` 会显式给出 L1 覆盖率——覆盖率低就是提醒该把打点补回来，不是数据错了。
 
-**数据落在哪**：默认 `~/.dsh/telemetry/requirement-spec/<仓库目录名>/events.jsonl`，按 git 仓库维度分文件，不写进用户仓库。
+**数据落在哪**：`<仓库根>/docs/requirements/.telemetry/events.jsonl`——**git 仓库优先**。
+
+跟需求产物放在同一棵树下有三个好处：天然按仓库分维度、不用另建汇聚库、能对着需求目录和 commit sha 做前后对比。不在 git 仓库里时才降级到 `~/.dsh/telemetry/requirement-spec/<目录名>/`。
 
 **隐私与治理**（数据默认明文，含需求标识、git user.name、主机名）：
 
 - 谁能看：只有能读该机器 home 目录的人；**不建议用作个人绩效**——样本小、受需求难度影响大，只适合找流程瓶颈；
 - 留多久：不自动清理，定期手工删 `~/.dsh/telemetry/` 下的文件即可；
 - 怎么脱敏：在 `~/.dsh/telemetry/requirement-spec/config.json` 里把 `anonymizeAuthor` 设为 `true`（作者与主机名变 `anon`）、`maskReqId` 设为 `true`（需求标识哈希化）。团队共享报告时建议打开；
-- **写进项目仓库前必须确认**：这属于修改用户仓库，先按不可逆动作停点请求确认，并把 `docs/requirements/.telemetry/` 加进 `.gitignore` 再写——否则一句 `git add -A` 就会把明文数据提交并 push 出去。
+- **会不会被提交**：默认不会。脚本首次写入时会自动把 `docs/requirements/.telemetry/` 追加到该仓库的 `.gitignore`（重复执行幂等，不会写两遍）。所以 `git add -A` 也带不出去；
+- **想让数据随 git 流动**（团队共享、跨机器比对）：把配置 `commit` 设为 `true`，脚本就不再动 `.gitignore`。**此时明文数据会进版本历史**，建议同时打开 `anonymizeAuthor`（作者与主机名变 `anon`）、必要时打开 `maskReqId`；
+- **只想落本地不上仓库目录**：把配置 `store` 设为 `home`，数据改落 `~/.dsh/telemetry/requirement-spec/<仓库名>/`。
 
 **看数据**：`node "$SKILL_DIR/assets/telemetry.js" report`（加 `--json` 出机器可读；`--path` 指定仓库；跨仓库先在 `~/.dsh/telemetry/requirement-spec/config.json` 的 `scanPaths` 里配上根目录再用 `--all`）。
 
