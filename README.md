@@ -21,7 +21,7 @@
 | 阶段 | 执行 agent | 相当于 |
 | --- | --- | --- |
 | 1 产品需求 | 需求 agent（S 级兼技术方案） | 需求侧产品经理 |
-| 2 设计 | 设计 agent | UI 设计师 |
+| 2 设计 | 设计 agent（**任何档位都不合并**） | UI 设计师 |
 | 3 技术方案 | 方案 agent | 技术负责人 |
 | 4 开发 | 开发 agent（承担全部代码修正） | 工程师 |
 | 5 代码评审与修正 | 评审 agent 提意见、主流程判定、开发 agent 修、评审 agent 复审 | 同事工程师 |
@@ -84,22 +84,30 @@ references/
 assets/
   figma-*.js              # 授权预检、渲染、截图、捕获、编译
   figma-plugin/           # 本地 Figma 插件骨架（手动导入兜底）
+  telemetry.js            # 运行遥测：阶段边界打点、效率报告、编排记录回填
 ```
 
 ## 使用效率统计
 
-主流程在阶段边界打点，数据按 git 仓库维度落到 `<仓库根>/docs/requirements/.telemetry/events.jsonl`，
-用来分析团队用这个 skill 的效率（阶段耗时、返工热点、评审误报率、缺陷逃逸率、停点分布），据此定位该改哪份角色卡或准出清单。
+主流程在阶段边界打点，数据默认落到 `~/.dsh/telemetry/requirement-spec/<仓库目录名>/events.jsonl`
+（**不写进用户仓库**——需求标识和作者名是明文，写进项目目录会随 `git add -A` 一起提交出去）。
+用来分析团队用这个 skill 的效率（阶段耗时、返工热点、评审误报率、缺陷逃逸率、停点分布、中断率），据此定位该改哪份角色卡或准出清单。
+
+调用时用 skill 的绝对路径（脚本按主流程的 cwd 判断数据该归到哪个仓库，用相对路径会找不到脚本）：
 
 ```bash
-node assets/telemetry.js report                          # 出效率报告
-node assets/telemetry.js report --json                   # 机器可读
-node assets/telemetry.js parse --path docs/requirements  # 漏打点时从编排记录回填
+node "$SKILL_DIR/assets/telemetry.js" where    # 先看数据会落到哪，确认遥测是通的
 ```
 
-协议（打点时机与三条铁律）见 [references/0-orchestration/README.md](references/0-orchestration/README.md) 的「遥测」一节。
+```bash
+node "$SKILL_DIR/assets/telemetry.js" report                          # 出效率报告
+node "$SKILL_DIR/assets/telemetry.js" report --json                   # 机器可读
+node "$SKILL_DIR/assets/telemetry.js" parse --path docs/requirements  # 漏打点时从编排记录回填
+```
+
+协议（打点时机与四条铁律）见 [references/0-orchestration/README.md](references/0-orchestration/README.md) 的「遥测」一节。
 数据只用于改进 skill 本身，**不建议用作个人绩效**——一旦变成考核，打点就会失真。
-不想让数据进版本控制，`.gitignore` 加一行 `docs/requirements/.telemetry/`。
+留存与清理见 0-orchestration 的「隐私与治理」；需要脱敏时把配置里的 `anonymizeAuthor` / `maskReqId` 打开。
 
 ## 免责
 

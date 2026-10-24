@@ -14,5 +14,6 @@ tmp/
 .out/
 *.tmp
 
-# 遥测数据（按 git 仓库维度落在 docs/requirements/.telemetry/，不随 skill 提交）
+# 遥测数据：默认落在 ~/.dsh/telemetry/，不进任何仓库；
+# 只有显式配置写入仓库时才会出现在这里（此时含明文需求标识与作者名，提交前须确认）
 docs/requirements/.telemetry/

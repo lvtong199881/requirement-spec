@@ -39,7 +39,7 @@
 
 顺序固定，不要颠倒：
 
-1. **归档**：`design-spec.json`、`html/`、`use-figma.js`（若有）归到 `docs/requirements/<需求标识>/figma-import/`；PNG 归到 `docs/requirements/<需求标识>/design-images/`；设计说明里的图片路径同步改成归档后的相对路径。临时目录不留唯一副本。
+1. **归档**（五类文件都要迁，漏一类就会在阶段 3 / 7 变成「必需输入缺失」）：`design-spec.json`、`html/`、`use-figma.js`（若有）归到 `docs/requirements/<需求标识>/figma-import/`；PNG 归到 `docs/requirements/<需求标识>/design-images/`；**`设计说明.md` 归到 `docs/requirements/<需求标识>/`**（它同样先落在临时目录，漏迁会被清理掉，而它是阶段 3 和阶段 7 的必需输入）；设计说明里的图片路径同步改成归档后的相对路径。临时目录不留唯一副本。
 2. **上传**：按 [figma.md](figma.md) 第六节建文件、建 session、出稿。**默认走 B 通道**（`generate_figma_design` + `assets/figma-capture.js`，不计额度）；需要原生结构且额度够时才走 A（`use_figma`）。拿到 `node-id` / `frameId` 就拼链接回填。
 3. **回填链接**：设计说明的「Figma 链接」列必须逐条填。确实拿不到链接（无账号 / 桥接不通 / capture 失败）时，按 [figma.md](figma.md) 第八节降级，写明当前状态和用户需要做什么，**不阻断阶段 2 通过**。
 

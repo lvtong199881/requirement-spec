@@ -5,30 +5,38 @@
  * 用途：把 skill 的执行过程（阶段耗时、返工、评审判定、缺陷、停点、独立性违规）
  * 落成可聚合的结构化事件，用来回答「团队用这个 skill 的效率如何、该改哪一段」。
  *
- * 三条铁律（协议里同样写死）：
+ * 四条铁律（协议里同样写死）：
  *   1. 只读侧信道：数据只从流程里流出，绝不回灌给任何子 agent，也不写进任务包。
+ *      （因此回执里不要加「自报用量」这类字段——它会随任务包发给子 agent。）
  *   2. 失败不影响主流程：写入类命令永远退出码 0，内部异常只告警到 stderr。
  *   3. 不替代编排记录：编排记录.md 是给人看的审计留痕，这里是给机器算的。
+ *   4. 默认不写进用户仓库：数据落在 ~/.dsh/telemetry/ 下，不进项目目录，
+ *      避免随 `git add -A` 把明文的需求标识与作者名提交出去。
  *
- * 存储位置（按 git 仓库维度）：
- *   优先：<仓库根>/docs/requirements/.telemetry/events.jsonl
- *   降级：~/.dsh/telemetry/requirement-spec/<目录名>/events.jsonl（不在 git 仓库里时）
- *   .gitignore 里加一行 `docs/requirements/.telemetry/` 即可整份退出版本控制。
+ * 存储位置（默认按 git 仓库维度分文件，落在 home 目录下，不进用户仓库）：
+ *   默认：~/.dsh/telemetry/requirement-spec/<仓库目录名>/events.jsonl
+ *   降级：同上（不在 git 仓库时按当前目录名分文件）
+ *   写进项目仓库：把配置 storeInRepo 设为 true（此时必须先把
+ *   docs/requirements/.telemetry/ 加进 .gitignore，否则 `git add -A` 会带出明文数据）。
+ *
+ * 调用方式：必须用 skill 的绝对路径（脚本按主流程的 cwd 判断数据归到哪个仓库，
+ * 用相对路径会在项目仓库里报「模块找不到」并退出 1，「永远退出 0」的保护层来不及生效）：
+ *   node "$SKILL_DIR/assets/telemetry.js" where
  *
  * 用法：
- *   node assets/telemetry.js init   --req <需求标识> [--mode 主动|自动] [--tier S|M|L|不分级]
- *   node assets/telemetry.js stage-start --run <run_id> --stage 5a --role 评审
- *   node assets/telemetry.js stage-end   --run <run_id> --stage 5a --status 完成 [--rework 1]
- *   node assets/telemetry.js rework     --run <run_id> --stage 3 --round 1 --gaps "接口未定稿,缺回滚方案"
- *   node assets/telemetry.js issue      --run <run_id> --id CR-1 --level 阻断 --verdict 已修复
- *   node assets/telemetry.js recheck   --run <run_id> --round 1 --result 通过
- *   node assets/telemetry.js defect    --run <run_id> --source 6 --severity 严重 --introduced yes
- *   node assets/telemetry.js stop      --run <run_id> --type 硬阻塞 [--count 1] [--wait 600]
- *   node assets/telemetry.js violation --run <run_id> --type 复审新起实例 --stage 5d
- *   node assets/telemetry.js close     --run <run_id> --result 验收通过 [--agents 8]
- *   node assets/telemetry.js report    [--path <仓库或目录>]... [--json]
- *   node assets/telemetry.js parse    [--path docs/requirements/<需求标识>] [--force]
- *   node assets/telemetry.js where
+ *   node "$SKILL_DIR/assets/telemetry.js" init   --req <需求标识> [--mode 主动|自动] [--tier S|M|L|不分级]
+ *   node "$SKILL_DIR/assets/telemetry.js" stage-start --run <run_id> --stage 5a --role 评审
+ *   node "$SKILL_DIR/assets/telemetry.js" stage-end   --run <run_id> --stage 5a --status 完成 [--rework 1]
+ *   node "$SKILL_DIR/assets/telemetry.js" rework     --run <run_id> --stage 3 --round 1 --gaps "接口未定稿,缺回滚方案"
+ *   node "$SKILL_DIR/assets/telemetry.js" issue      --run <run_id> --id CR-1 --level 阻断 --verdict 已修复
+ *   node "$SKILL_DIR/assets/telemetry.js" recheck   --run <run_id> --round 1 --result 通过
+ *   node "$SKILL_DIR/assets/telemetry.js" defect    --run <run_id> --source 6 --severity 严重 --introduced yes
+ *   node "$SKILL_DIR/assets/telemetry.js" stop      --run <run_id> --type 硬阻塞 [--count 1] [--wait 600]
+ *   node "$SKILL_DIR/assets/telemetry.js" violation --run <run_id> --type 复审新起实例 --stage 5d
+ *   node "$SKILL_DIR/assets/telemetry.js" close     --run <run_id> --result 验收通过 [--agents 8]
+ *   node "$SKILL_DIR/assets/telemetry.js" report    [--path <仓库或目录>]... [--json]
+ *   node "$SKILL_DIR/assets/telemetry.js" parse    [--path docs/requirements/<需求标识>] [--force]
+ *   node "$SKILL_DIR/assets/telemetry.js" where
  *
  * 退出码：
  *   0  成功（写入类命令即便内部失败也返回 0，不阻塞主流程）
@@ -56,9 +64,34 @@ const DEFAULTS = {
   // 按使用者选择：需求标识与作者明文存储。将来要脱敏改这里即可。
   maskReqId: false,
   anonymizeAuthor: false,
+  // 默认 false：数据落在 ~/.dsh/telemetry/ 下。设为 true 才写进项目仓库
+  // （此时必须先把 docs/requirements/.telemetry/ 加进 .gitignore）。
+  storeInRepo: false,
   // report --all 时扫描的根目录列表
   scanPaths: [],
 };
+
+// ---------------------------------------------------------------- 运行目录
+
+/**
+ * 脚本一律用绝对路径调用（node "$SKILL_DIR/assets/telemetry.js"），
+ * 而数据要落在「主流程所在的项目仓库」——脚本位置与数据落点要求的 cwd 相反，
+ * 所以 cwd 必须由主流程决定：默认取当前工作目录，也可用 --cwd 显式指定。
+ * 主流程必须保证 cwd 是项目仓库，否则数据会落错地方。
+ */
+let RUN_CWD = process.cwd();
+
+/** 主流程可用 --cwd 显式指定项目仓库，覆盖默认的工作目录推断。 */
+function applyCwd(args) {
+  if (args.cwd) {
+    const abs = path.resolve(args.cwd);
+    if (!fs.existsSync(abs)) {
+      process.stderr.write(`[telemetry] --cwd 指向的目录不存在：${abs}\n`);
+      return;
+    }
+    RUN_CWD = abs;
+  }
+}
 
 // ---------------------------------------------------------------- 参数解析
 
@@ -108,7 +141,7 @@ function skillSha() {
 function author() {
   const cfg = loadConfig();
   if (cfg.anonymizeAuthor) return 'anon';
-  return sh('git', ['config', 'user.name'], process.cwd()) || process.env.USER || 'unknown';
+  return sh('git', ['config', 'user.name'], RUN_CWD) || process.env.USER || 'unknown';
 }
 
 function loadConfig() {
@@ -120,17 +153,25 @@ function loadConfig() {
 }
 
 function resolveStore(cwd) {
+  if (path.resolve(cwd) === path.resolve(SKILL_DIR)) {
+    throw new Error('cwd 是 skill 自己的目录，数据会落进 skill 仓库；主流程必须 cd 到项目仓库再调用，或用 --cwd 指定');
+  }
   const root = gitRoot(cwd);
-  if (root) {
+  // 仓库维度的分桶名：在项目里就按仓库名，不在就按目录名。
+  const name = root ? path.basename(root) : (path.basename(path.resolve(cwd)) || 'unknown');
+  // 默认落在 home 下，绝不主动写进用户仓库：事件里有明文的需求标识、
+  // git user.name 和主机名，写进项目目录会被一句 git add -A 提交并 push 出去。
+  // 只有配置里显式打开 storeInRepo 才写回仓库（且规范要求先加 .gitignore）。
+  if (loadConfig().storeInRepo && root) {
     return {
       file: path.join(root, 'docs', 'requirements', '.telemetry', 'events.jsonl'),
-      repo: path.basename(root),
+      repo: name,
       root,
       inGit: true,
+      inRepo: true,
     };
   }
-  const name = path.basename(path.resolve(cwd)) || 'unknown';
-  return { file: path.join(FALLBACK_ROOT, name, 'events.jsonl'), repo: name, root: null, inGit: false };
+  return { file: path.join(FALLBACK_ROOT, name, 'events.jsonl'), repo: name, root, inGit: !!root, inRepo: false };
 }
 
 function readEvents(file) {
@@ -163,6 +204,33 @@ function makeRunId(req) {
   return `${String(req || 'req').replace(/[^a-zA-Z0-9_-]/g, '')}-${t}-${r}`;
 }
 
+/**
+ * 找同需求下还开着的 run（没有 run.end 也没有 abort）。
+ * 用于续跑时复用 run_id——否则每次续跑都是新 run，旧 run 会被静默中断推断
+ * 误判成 429，把真告警淹没掉。
+ */
+function findOpenRun(file, req) {
+  try {
+    const events = readEvents(file);
+    const runs = new Map();
+    for (const e of events) {
+      if (!e.run) continue;
+      if (!runs.has(e.run)) runs.set(e.run, { req: null, ended: false });
+      const r = runs.get(e.run);
+      if (e.evt === 'run.start') {
+        if (e.req) r.req = e.req;
+        if (e.src) r.src = e.src;
+      }
+      if (e.evt === 'run.end' || e.evt === 'abort') r.ended = true;
+    }
+    const masked = maskReq(req);
+    for (const [id, r] of runs) {
+      if (!r.ended && r.src !== 'parse' && (r.req === req || r.req === masked)) return id;
+    }
+  } catch (e) { /* 读不到就当没有，走正常新建 */ }
+  return null;
+}
+
 // ---------------------------------------------------------------- 事件构造
 
 function baseEvent(evt, run, extra) {
@@ -176,7 +244,7 @@ function baseEvent(evt, run, extra) {
 
 function emit(evt) {
   try {
-    const store = resolveStore(process.cwd());
+    const store = resolveStore(RUN_CWD);
     evt.repo = evt.repo || store.repo;
     appendEvent(store.file, evt);
     return evt;
@@ -220,8 +288,8 @@ function durMs(fromIso, toIso) {
 function cmdInit(args) {
   const req = args.req || args._[0];
   if (!req) { process.stderr.write('[telemetry] init 需要 --req <需求标识>\n'); process.exit(2); }
-  const store = resolveStore(process.cwd());
-  const run = makeRunId(req);
+  const store = resolveStore(RUN_CWD);
+  const run = findOpenRun(store.file, req) || makeRunId(req);
   const evt = baseEvent('run.start', run, {
     req: maskReq(req),
     repo: store.repo,
@@ -230,7 +298,7 @@ function cmdInit(args) {
     project: store.repo,
     author: args.author || author(),
     skill_sha: skillSha(),
-    host: os.hostname(),
+    host: loadConfig().anonymizeAuthor ? 'anon' : os.hostname(),
     src: 'l1',
   });
   emit(evt);
@@ -253,7 +321,7 @@ function cmdStageEnd(args) {
   const run = args.run;
   const stage = args.stage;
   if (!run || !stage) { process.stderr.write('[telemetry] stage-end 需要 --run 与 --stage\n'); process.exit(2); }
-  const store = resolveStore(process.cwd());
+  const store = resolveStore(RUN_CWD);
   const from = lastPendingStart(store.file, run, String(stage));
   const ts = nowIso();
   return emit(baseEvent('stage.end', run, {
@@ -323,8 +391,13 @@ function cmdStop(args) {
  */
 function cmdAbort(args) {
   if (!args.run) { process.stderr.write('[telemetry] abort 需要 --run\n'); process.exit(2); }
-  const store = resolveStore(process.cwd());
+  const store = resolveStore(RUN_CWD);
   const ts = nowIso();
+  const priorAll = readEvents(store.file).filter((e) => e.run === args.run);
+  if (priorAll.some((e) => e.evt === 'run.end' && e.result)) {
+    process.stderr.write(`[telemetry] run ${args.run} 已交付，忽略本次 abort（避免双身份）\n`);
+    return null;
+  }
   // 找出中断时还在进行中的阶段：有 start 没有 end 的那个
   const events = readEvents(store.file);
   const open = [];
@@ -354,8 +427,16 @@ function cmdViolation(args) {
 
 function cmdClose(args) {
   if (!args.run) { process.stderr.write('[telemetry] close 需要 --run\n'); process.exit(2); }
-  const store = resolveStore(process.cwd());
+  const store = resolveStore(RUN_CWD);
   const ts = nowIso();
+  // 已中断的 run 不能再判交付结果，否则同一 run 既算「已交付」又算「已中断」，
+  // 一次失败被记两次，交付率与中断率同时失真。
+  const prior = readEvents(store.file).filter((e) => e.run === args.run);
+  const alreadyAborted = prior.some((e) => e.evt === 'abort');
+  if (alreadyAborted) {
+    process.stderr.write(`[telemetry] run ${args.run} 已记过 abort，忽略本次 close（避免双身份）\n`);
+    return null;
+  }
   return emit(baseEvent('run.end', args.run, {
     result: args.result || null,
     agents: numOrNull(args.agents),
@@ -379,7 +460,7 @@ function yn(v) {
  */
 function cmdParse(args) {
   const target = args.path || args._[0] || 'docs/requirements';
-  const base = path.resolve(process.cwd(), target);
+  const base = path.resolve(RUN_CWD, target);
   const dirs = [];
   if (fs.existsSync(path.join(base, '编排记录.md'))) {
     dirs.push(base);
@@ -394,8 +475,26 @@ function cmdParse(args) {
     return [];
   }
 
-  const store = resolveStore(process.cwd());
-  const existing = readEvents(store.file);
+  const store = resolveStore(RUN_CWD);
+  let existing = readEvents(store.file);
+  if (args.force) {
+    // 强制重解析：先清掉这批 run 的旧事件，否则每 force 一次就追加一整套，
+    // 数据线性膨胀。只删本次将要重解析的需求对应的 run。
+    const doomed = new Set();
+    for (const dir of dirs) {
+      const text0 = fs.readFileSync(path.join(dir, '编排记录.md'), 'utf8');
+      const req0 = pickBullet(text0, '需求标识') || path.basename(dir);
+      doomed.add('p-' + crypto.createHash('sha256')
+        .update(`${store.repo}|${req0}`).digest('hex').slice(0, 16));
+    }
+    const kept = existing.filter((e) => !doomed.has(e.run));
+    const removed = existing.length - kept.length;
+    if (removed > 0) {
+      fs.writeFileSync(store.file, kept.map((e) => JSON.stringify(e)).join('\n') + (kept.length ? '\n' : ''));
+      process.stdout.write(`[telemetry] --force：已清除 ${removed} 条旧事件，重新解析 ${doomed.size} 个需求\n`);
+    }
+    existing = kept;
+  }
   const known = new Set(existing.map((e) => e.run));
   let written = 0;
   let skipped = 0;
@@ -404,9 +503,10 @@ function cmdParse(args) {
     const file = path.join(dir, '编排记录.md');
     const text = fs.readFileSync(file, 'utf8');
     const req = pickBullet(text, '需求标识') || path.basename(dir);
-    const stat = fs.statSync(file);
+    // 幂等键只用 repo + 需求标识，不含 mtime：编排记录是增量追加的，
+    // 一旦把 mtime 算进去，同一需求每次 parse 都会生成新 run，幂等失效。
     const run = 'p-' + crypto.createHash('sha256')
-      .update(`${store.repo}|${req}|${stat.mtimeMs}`).digest('hex').slice(0, 16);
+      .update(`${store.repo}|${req}`).digest('hex').slice(0, 16);
     if (known.has(run) && !args.force) { skipped++; continue; }
 
     const meta = {
@@ -513,7 +613,8 @@ function normalizeVerdict(s) {
 
 const STAGE_NAMES = {
   '1': '产品需求', '2': '设计', '3': '技术方案', '4': '开发',
-  '5a': '代码评审', '5c': '修正', '5d': '复审', '6': '测试', '7': '验收', '8': '复盘',
+  '5a': '代码评审', '5b': '判定', '5c': '修正', '5d': '复审',
+  '6': '测试', '7a': '验收取证', '7b': '验收判定', '7': '验收', '8': '复盘',
 };
 
 function pct(sorted, p) {
@@ -544,10 +645,9 @@ function collectFiles(args) {
   if (args.path) raw.push(...(Array.isArray(args.path) ? args.path : [args.path]));
   if (args.all) raw.push(...loadConfig().scanPaths);
   if (args._.length) raw.push(...args._);
-  if (!raw.length) raw.push(process.cwd());
 
   for (const p of raw) {
-    const abs = path.resolve(process.cwd(), p);
+    const abs = path.resolve(RUN_CWD, p);
     let st = null;
     try { st = fs.statSync(abs); } catch (e) { continue; }
     if (st.isFile() && abs.endsWith('events.jsonl')) { paths.push(abs); continue; }
@@ -556,6 +656,13 @@ function collectFiles(args) {
     if (fs.existsSync(direct)) { paths.push(direct); continue; }
     // 目录下递归找（限制深度，避免扫整个 home）
     walk(abs, 0, 6, paths);
+  }
+  // 没有显式路径时，用当前的默认落点（数据默认在 home 下，不在项目目录里）。
+  // 少了这一步，report 会在项目目录找不到文件就报「暂无数据」，
+  // 看上去像遥测没工作，其实只是读取路径没跟着存储策略改。
+  if (!raw.length) {
+    try { paths.push(resolveStore(RUN_CWD).file); } catch (e) { /* cwd 不合法时忽略 */ }
+    raw.push(RUN_CWD);
   }
   // fallback：本机降级目录
   if (args.all && fs.existsSync(FALLBACK_ROOT)) walk(FALLBACK_ROOT, 0, 3, paths);
@@ -657,6 +764,10 @@ function aggregate(events) {
 const SILENCE_THRESHOLD_MS = 30 * 60 * 1000; // 30 分钟无任何事件
 function markInterrupted(r) {
   if (r.finished || r.aborted) return r;
+  // parse 回填的 run 天然没有 run.end / abort——它是从编排记录里补出来的，
+  // 不是真的跑到一半死了。不排除就会刷出一堆「假静默中断」，
+  // 把真正的 429 / 崩溃淹没在告警里。
+  if (r.src === 'parse') return r;
   const ref = r.lastTs || r.start;
   if (!ref) return r;
   const silence = Date.now() - new Date(ref).getTime();
@@ -744,9 +855,15 @@ function buildReport(runs, files) {
   const blockingFixed = issues.filter((i) => i.level === '阻断' && i.verdict === '已修复').length;
 
   // 缺陷与逃逸
-  const defects = runs.flatMap((r) => r.defects);
+  // 逃逸率只在有实时打点的样本里算。parse 回填不产生 defect 事件，
+  // 混进来只会往分母加评审问题、永不往分子加缺陷，结果是「覆盖率越低、
+  // 逃逸率越好看」——方向正好反了。样本不足时直接不给数。
+  const l1RunsForEscape = runs.filter((r) => r.src !== 'parse');
+  const defects = l1RunsForEscape.flatMap((r) => r.defects);
   const severeEscaped = defects.filter((d) => d.severity === '严重' && d.out_of_scope !== true).length;
-  const foundInReview = issues.filter((i) => ['阻断', '应修'].includes(i.level)).length;
+  const foundInReview = l1RunsForEscape
+    .flatMap((r) => r.issues)
+    .filter((i) => ['阻断', '应修'].includes(i.level)).length;
   const escapeRate = (foundInReview + severeEscaped)
     ? severeEscaped / (foundInReview + severeEscaped) : null;
 
@@ -915,12 +1032,19 @@ function printReport(rep) {
   const ns = rep.north_star;
   p('## 北极星');
   p('');
-  p(`- **一次通过交付率**：${ns.closed_count ? Math.round(ns.first_pass_delivery_rate * 100) : '—'}%（${ns.first_pass_count}/${ns.closed_count}）`);
-  p(`- **交付时长**：P50 ${fmtDur(ns.duration_p50)} / P90 ${fmtDur(ns.duration_p90)}（样本 ${ns.duration_samples}）`);
-  p(`- **中断率**：${Math.round((ns.abort_rate || 0) * 100)}%（${ns.aborted_count}/${rep.meta.runs}）`);
+  p('三个指标的分母互不相同，读的时候先看分母再读数字：');
+  p('');
+  p(`- **一次通过交付率**：${ns.closed_count ? Math.round(ns.first_pass_delivery_rate * 100) : '—'}%（${ns.first_pass_count}/${ns.closed_count}，分母＝**已交付**的 run，中断的不算）`);
+  p(`- **交付时长**：P50 ${fmtDur(ns.duration_p50)} / P90 ${fmtDur(ns.duration_p90)}（样本 ${ns.duration_samples}，分母＝**有始有终**的 run，中断时长不计入）`);
+  p(`- **中断率**：${Math.round((ns.abort_rate || 0) * 100)}%（${ns.aborted_count}/${rep.meta.runs}，分母＝**全部** run）`);
   p('');
   p('三者成对看——只看时长会诱导牺牲质量，只看通过率会让中断的需求隐形。');
   p('');
+  if (rep.meta.runs < 10) {
+    p(`> ⚠️ **小样本**：当前只有 ${rep.meta.runs} 个 run，不足以判断趋势。1/1 是 100%、0/1 是 0%，`);
+    p('> 都只说明样本太少。攒到 10 个以上再看比例，现在只适合挑出**单个**最痛的需求来复盘。');
+    p('');
+  }
 
   p('## 阶段效率');
   p('');
@@ -1016,7 +1140,7 @@ function cmdReport(args) {
 }
 
 function cmdWhere() {
-  const s = resolveStore(process.cwd());
+  const s = resolveStore(RUN_CWD);
   process.stdout.write(JSON.stringify(s, null, 2) + '\n');
 }
 
@@ -1026,6 +1150,7 @@ function main() {
   const argv = process.argv.slice(2);
   const cmd = argv[0];
   const args = parseArgs(argv.slice(1));
+  applyCwd(args);
 
   if (!cmd || cmd === 'help' || cmd === '-h' || cmd === '--help') {
     process.stdout.write(fs.readFileSync(__filename, 'utf8').split('*/')[0].split('/**')[1] + '\n');
