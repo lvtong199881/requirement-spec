@@ -14,6 +14,6 @@ tmp/
 .out/
 *.tmp
 
-# 遥测数据：默认写进仓库但由脚本自动加入本 ignore，只留本地；
-# 只有把配置 commit 设为 true 才会随 git 提交（含明文需求标识与作者名，提交前须确认）
-docs/requirements/.telemetry/
+# 遥测数据默认随 git 提交（团队共享）。想让数据只留本地，取消下面这行注释，
+# 并把配置 commit 设为 false（此时明文不会进版本历史）。
+# docs/requirements/.telemetry/

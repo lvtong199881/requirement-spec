@@ -10,17 +10,17 @@
  *      （因此回执里不要加「自报用量」这类字段——它会随任务包发给子 agent。）
  *   2. 失败不影响主流程：写入类命令永远退出码 0，内部异常只告警到 stderr。
  *   3. 不替代编排记录：编排记录.md 是给人看的审计留痕，这里是给机器算的。
- *   4. 默认不进版本控制：数据写进仓库的 docs/requirements/.telemetry/，与需求产物同源，
- *      脚本会自动把该目录加进 .gitignore，所以不会随 `git add -A` 被提交出去。
- *      要让数据跟着 clone / push 流动才把配置 commit 设为 true（建议同时开 anonymizeAuthor）。
+ *   4. 数据随 git 走：写进仓库的 docs/requirements/.telemetry/，与需求产物同源，
+ *      能对齐需求目录与 commit sha，团队 pull 就能拿到彼此的数据。
+ *      一个需求只会委派给一个人，不存在并发追加冲突；共享前建议开 anonymizeAuthor。
+ *      想让数据只留本地，把配置 commit 设为 false（此时自行把该目录加进 .gitignore）。
  *
- * 存储位置（git 仓库优先）：
- *   默认：<仓库根>/docs/requirements/.telemetry/events.jsonl
- *         ——与需求产物同源，能对齐需求目录与 commit sha；
- *         脚本会自动把该目录加进仓库的 .gitignore，数据只留本地。
- *   降级：~/.dsh/telemetry/requirement-spec/<目录名>/events.jsonl（不在 git 仓库时）
- *   配置：store=repo|home（默认 repo）；commit=true 时不写 .gitignore，
- *         数据随 git 提交（团队共享，此时明文会进版本历史，建议开 anonymizeAuthor）。
+ * 存储位置（一律落项目目录）：
+ *   默认：<项目根>/docs/requirements/.telemetry/events.jsonl
+ *         ——与需求产物同源，能对齐需求目录与 commit sha。
+ *         是 git 仓库就用仓库根；不是 git 仓库就用当前目录本身。
+ *   配置：store=home 才改落 ~/.dsh/telemetry/requirement-spec/<目录名>/；
+ *         commit=false 时不随 git 提交（此时自行把该目录加进 .gitignore）。
  *
  * 调用方式：必须用 skill 的绝对路径（脚本按主流程的 cwd 判断数据归到哪个仓库，
  * 用相对路径会在项目仓库里报「模块找不到」并退出 1，「永远退出 0」的保护层来不及生效）：
@@ -67,12 +67,14 @@ const DEFAULTS = {
   // 按使用者选择：需求标识与作者明文存储。将来要脱敏改这里即可。
   maskReqId: false,
   anonymizeAuthor: false,
-  // 存储位置：repo = git 仓库优先（默认，不在仓库时降级 home）；
-  //           home = 始终落 ~/.dsh/telemetry/。
+  // 存储位置：repo = 一律落项目目录（默认，是不是 git 仓库都落）；
+  //           home = 落 ~/.dsh/telemetry/requirement-spec/<目录名>/。
   store: 'repo',
-  // 是否随 git 提交。默认 false：自动把 .telemetry 加进 .gitignore，数据只留本地。
-  // 想让数据跟着 clone / push 流动（团队共享）才设为 true，并建议同时打开 anonymizeAuthor。
-  commit: false,
+  // 是否随 git 提交。默认 true：数据跟着 clone / push 流动，团队共享。
+  // 设为 false 则数据只留本地（此时需自行把该目录加进 .gitignore）。
+  // 注意：明文字段（需求标识 / 作者 / 主机名）会进版本历史，
+  // 共享前建议把 anonymizeAuthor 设为 true。
+  commit: true,
   // report --all 时扫描的根目录列表
   scanPaths: [],
 };
@@ -163,17 +165,17 @@ function resolveStore(cwd) {
     throw new Error('cwd 是 skill 自己的目录，数据会落进 skill 仓库；主流程必须 cd 到项目仓库再调用，或用 --cwd 指定');
   }
   const root = gitRoot(cwd);
-  // 仓库维度的分桶名：在项目里就按仓库名，不在就按目录名。
-  const name = root ? path.basename(root) : (path.basename(path.resolve(cwd)) || 'unknown');
-  // **git 仓库优先**：在项目里就写进仓库，与需求产物同源，
-  // 能对齐需求目录与 commit sha，团队比对都在同一个地方。
-  // 外泄风险交给 .gitignore 挡，不因噎废食。
-  if (root && loadConfig().store !== 'home') {
+  // 数据一律落在项目目录，跟项目是不是 git 仓库无关：
+  // 它要跟需求产物放在同一棵树下，才能对着需求目录与 commit sha 做前后对比。
+  // 是 git 仓库就用仓库根，不是就用当前目录本身。
+  const base = root || path.resolve(cwd);
+  const name = path.basename(base) || 'unknown';
+  if (loadConfig().store !== 'home') {
     return {
-      file: path.join(root, 'docs', 'requirements', '.telemetry', 'events.jsonl'),
+      file: path.join(base, 'docs', 'requirements', '.telemetry', 'events.jsonl'),
       repo: name,
       root,
-      inGit: true,
+      inGit: !!root,
       inRepo: true,
     };
   }
@@ -189,34 +191,6 @@ function readEvents(file) {
     .filter(Boolean);
 }
 
-const TELEMETRY_IGNORE_LINE = 'docs/requirements/.telemetry/';
-const gitignoreDone = new Set();
-
-/**
- * 写进仓库时自动确保 .gitignore 挡着它。
- * 默认 commit=false，数据只留本地——否则一句 git add -A 就把明文
- * （需求标识、git user.name、主机名）提交并 push 出去了。
- * 只有配置里显式 commit=true 才跳过这步。
- */
-function ensureIgnored(root) {
-  if (!root || gitignoreDone.has(root)) return;
-  gitignoreDone.add(root);
-  if (loadConfig().commit) return;
-  try {
-    const gi = path.join(root, '.gitignore');
-    const existing = fs.existsSync(gi) ? fs.readFileSync(gi, 'utf8') : '';
-    const lines = existing.split(/\r?\n/).map((l) => l.trim());
-    if (lines.indexOf(TELEMETRY_IGNORE_LINE) !== -1) return;
-    const needsLeadingNewline = existing.length > 0 && existing.slice(-1) !== '\n';
-    const header = existing.length > 0 && existing.toLowerCase().indexOf('telemetry') === -1
-      ? '# 遥测数据（默认只留本地，不随 git 提交）\n'
-      : '';
-    const payload = (needsLeadingNewline ? '\n' : '') + header + TELEMETRY_IGNORE_LINE + '\n';
-    fs.appendFileSync(gi, payload);
-  } catch (e) {
-    process.stderr.write('[telemetry] 写 .gitignore 失败（已忽略）：' + e.message + '\n');
-  }
-}
 
 function appendEvent(file, evt) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -281,7 +255,6 @@ function emit(evt) {
   try {
     const store = resolveStore(RUN_CWD);
     evt.repo = evt.repo || store.repo;
-    if (store.inRepo) ensureIgnored(store.root);
     appendEvent(store.file, evt);
     return evt;
   } catch (e) {
@@ -1178,12 +1151,12 @@ function cmdReport(args) {
 function cmdWhere() {
   const s = resolveStore(RUN_CWD);
   const cfg = loadConfig();
-  if (s.inRepo) {
-    s.mode = cfg.commit ? 'repo(随 git 提交，团队可见)' : 'repo(本地，.gitignore 已挡)';
-  } else if (cfg.store === 'home') {
-    s.mode = 'home(配置指定，未写仓库)';
+  if (cfg.store === "home") {
+    s.mode = 'home(配置指定，不落项目目录)';
+  } else if (s.inGit) {
+    s.mode = cfg.commit ? '项目目录(随 git 提交，团队可见)' : '项目目录(仅本地，不提交)';
   } else {
-    s.mode = 'home(不在 git 仓库，降级)';
+    s.mode = '项目目录(非 git 仓库，不随 git 提交)';
   }
   process.stdout.write(JSON.stringify(s, null, 2) + '\n');
 }
