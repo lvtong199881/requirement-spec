@@ -24,7 +24,7 @@
 | 2 设计 | 设计 agent（**任何档位都不合并**） | UI 设计师 |
 | 3 技术方案 | 方案 agent | 技术负责人 |
 | 4 开发 | 开发 agent（承担全部代码修正） | 工程师 |
-| 5 代码评审与修正 | 评审 agent 提意见、主流程判定、开发 agent 修、评审 agent 复审 | 同事工程师 |
+| 5 代码评审与修正 | 评审 agent 做代码规范与工程质量评审、主流程判定、开发 agent 修、评审 agent 复审 | 同事工程师 |
 | 6 测试 | 测试 agent | QA |
 | 7 验收 | 验收 agent | 验收侧产品经理 |
 | 8 复盘 | 复盘 agent | 数据分析 |
@@ -43,7 +43,7 @@
 | 2 设计 | 以 `design-spec.json` 为设计源，派生页面 HTML 与 PNG，出 Figma 设计稿 | 设计说明 + Figma 稿 |
 | 3 技术方案 | 接口定义、影响面、风险、改动点关联 REQ | 技术方案 |
 | 4 开发 | 按项目规范实现，写并跑单元测试，构建 debug 包，同步更新开发内容状态 | 代码 + 单元测试 + debug 包 + 变更说明 |
-| 5 代码评审与修正 | 评审 agent 评审，主流程判定，开发 agent 修正，同一个评审 agent 复审（续跑） | 评审报告 + 修正后代码 |
+| 5 代码评审与修正 | 评审 agent 评审代码规范与工程质量，主流程判定，开发 agent 修正，同一个评审 agent 复审（续跑） | 评审报告 + 修正后代码 |
 | 6 测试 | 黑盒：debug 包装到模拟器/设备，UI 测试、主流程实跑、PRD 全覆盖、监测日志校验、截图归档 | 测试报告 + 归档截图 |
 | 7 验收 | 验收 agent 独立复核，主流程合并交付说明 | 验收文档 |
 | 8 复盘 | 按需 | 复盘记录 |
@@ -78,7 +78,7 @@ references/
   2-design/               # 阶段 2：设计 agent 角色卡、出稿流程/状态覆盖/归档，figma.md 通道与 spec，templates
   3-tech-plan/            # 阶段 3：方案 agent 角色卡、拆分粒度/接口定稿/影响面，templates
   4-development/          # 阶段 4：开发 agent 角色卡、提交信息规范，templates
-  5-review/               # 阶段 5：评审 agent 角色卡与协议、三方分工，templates
+  5-review/               # 阶段 5：代码规范评审 agent 角色卡与协议、三方分工，templates
   6-testing/              # 阶段 6：测试 agent 角色卡、测试要求/证据/截图归档，templates
   7-acceptance/           # 阶段 7：验收 agent 角色卡、设计稿核对/追溯矩阵，templates
 assets/
